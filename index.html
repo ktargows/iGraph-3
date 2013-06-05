@@ -1,0 +1,239 @@
+<html>
+  <head>
+  
+<title>iGraph</title>
+      
+      <meta name="description" content="3D Graphing Application">
+          <meta name="keywords" content="3D,Graph,Graphing">
+              <meta name="author" content="Jacob Philpott">
+                  <meta charset="UTF-8">
+      
+<link rel="icon" type="image/ico" href="http://www.igraph.info/Images/favicon.ico"/>
+<link rel="stylesheet" type="text/css" href="http://www.igraph.info/CSS/main.css">
+  
+    <script src="JS/Three.js"></script>
+    <script src="JS/raf.js"></script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-24749720-11', 'igraph.info');
+  ga('send', 'pageview');
+</script>
+
+  </head>
+
+  <body>
+      
+    <script>
+
+      function createTextCanvas(text, color, font, size) {
+        size = size || 24*SPsize/60;
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var fontStr = (size + 'px ') + (font || 'Arial');
+        ctx.font = fontStr;
+        var w = ctx.measureText(text).width;
+        var h = Math.ceil(size);
+        canvas.width = w;
+        canvas.height = h;
+        ctx.font = fontStr;
+        ctx.fillStyle = color || 'black';
+        ctx.fillText(text, 0, Math.ceil(size*0.8));
+        return canvas;
+      }
+
+      function createText2D(text, color, font, size, segW, segH) {
+        var canvas = createTextCanvas(text, color, font, size);
+        var plane = new THREE.PlaneGeometry(canvas.width, canvas.height, segW, segH);
+        var tex = new THREE.Texture(canvas);
+        tex.needsUpdate = true;
+        var planeMat = new THREE.MeshBasicMaterial({
+          map: tex, color: 0xffffff, transparent: true
+        });
+        var mesh = new THREE.Mesh(plane, planeMat);
+        mesh.scale.set(0.25, 0.25, 0.25);
+        mesh.doubleSided = true;
+        return mesh;
+      }
+
+var SPsize = 100
+var VXRangeLow = 0
+var VXRangeHigh = 100
+var VYRangeLow = 0
+var VYRangeHigh = 10
+var VZRangeLow = 0
+var VZRangeHigh = 150000
+var VRRangeLow = 0
+var VRRangeHigh = 200
+
+      var renderer = new THREE.WebGLRenderer({antialias: true});
+      var w = window.innerWidth;
+      var h = window.innerHeight;
+      renderer.setSize(w, h);
+      document.body.appendChild(renderer.domElement);
+
+      renderer.setClearColorHex(0xEEEEEE, 1.0);
+
+      var camera = new THREE.PerspectiveCamera( 45, w/h, 1, 10000 );
+      camera.position.z = 5.0 * SPsize/2;
+      camera.position.x = 5.0 * SPsize/2;
+      camera.position.y = 5.0 * SPsize/2;
+
+      var scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2( 0xffffff, 0.000 );
+
+      var scatterPlot = new THREE.Object3D();
+      scene.add(scatterPlot);
+
+      scatterPlot.rotation.y = 0.5;
+      function v(x,y,z){ return new THREE.Vertex(new THREE.Vector3(x,y,z)); }
+      
+      var lineGeo = new THREE.Geometry();
+      lineGeo.vertices.push(
+        v(-SPsize, 0, 0), v(SPsize, 0, 0),
+        v(0, -SPsize, 0), v(0, SPsize, 0),
+        v(0, 0, -SPsize), v(0, 0, SPsize),
+
+        v(-SPsize, SPsize, -SPsize), v(SPsize, SPsize, -SPsize),
+        v(-SPsize, -SPsize, -SPsize), v(SPsize, -SPsize, -SPsize),
+        v(-SPsize, SPsize, SPsize), v(SPsize, SPsize, SPsize),
+        v(-SPsize, -SPsize, SPsize), v(SPsize, -SPsize, SPsize),
+
+        v(-SPsize, 0, SPsize), v(SPsize, 0, SPsize),
+        v(-SPsize, 0, -SPsize), v(SPsize, 0, -SPsize),
+        v(-SPsize, SPsize, 0), v(SPsize, SPsize, 0),
+        v(-SPsize, -SPsize, 0), v(SPsize, -SPsize, 0),
+
+        v(SPsize, -SPsize, -SPsize), v(SPsize, SPsize, -SPsize),
+        v(-SPsize, -SPsize, -SPsize), v(-SPsize, SPsize, -SPsize),
+        v(SPsize, -SPsize, SPsize), v(SPsize, SPsize, SPsize),
+        v(-SPsize, -SPsize, SPsize), v(-SPsize, SPsize, SPsize),
+
+        v(0, -SPsize, SPsize), v(0, SPsize, SPsize),
+        v(0, -SPsize, -SPsize), v(0, SPsize, -SPsize),
+        v(SPsize, -SPsize, 0), v(SPsize, SPsize, 0),
+        v(-SPsize, -SPsize, 0), v(-SPsize, SPsize, 0),
+
+        v(SPsize, SPsize, -SPsize), v(SPsize, SPsize, SPsize),
+        v(SPsize, -SPsize, -SPsize), v(SPsize, -SPsize, SPsize),
+        v(-SPsize, SPsize, -SPsize), v(-SPsize, SPsize, SPsize),
+        v(-SPsize, -SPsize, -SPsize), v(-SPsize, -SPsize, SPsize),
+
+        v(-SPsize, 0, -SPsize), v(-SPsize, 0, SPsize),
+        v(SPsize, 0, -SPsize), v(SPsize, 0, SPsize),
+        v(0, SPsize, -SPsize), v(0, SPsize, SPsize),
+        v(0, -SPsize, -SPsize), v(0, -SPsize, SPsize)
+      );
+      var lineMat = new THREE.LineBasicMaterial({color: 0x808080, lineWidth: 1});
+      var line = new THREE.Line(lineGeo, lineMat);
+      line.type = THREE.Lines;
+      scatterPlot.add(line);
+      
+	var sphereMaterial = new THREE.MeshLambertMaterial(
+	{
+	    color: 0xE4CB0F
+	});
+	
+	var radius = (27.8408/VRRangeHigh)*SPsize, segments = 100, rings = 100;
+
+	var sphere = new THREE.Mesh(
+	   new THREE.SphereGeometry(radius, segments, rings),
+	   sphereMaterial);
+	   
+	sphere.position.x = (80.9/VXRangeHigh)*SPsize;
+	sphere.position.y = (1.63/VYRangeHigh)*SPsize;
+	sphere.position.z = (50343.69/VZRangeHigh)*SPsize;
+
+	scatterPlot.add(sphere);
+	
+var intensity = 0.010000;
+        
+	var pointLight = new THREE.PointLight( 0xFFFFFF * intensity);
+
+	pointLight.position.x = SPsize;
+	pointLight.position.y = SPsize;
+	pointLight.position.z = SPsize;
+
+	scene.add(pointLight);
+
+      var titleX = createText2D('-X');
+      titleX.position.x = -SPsize-10;
+      scatterPlot.add(titleX);
+
+      var titleX = createText2D('X');
+      titleX.position.x = SPsize+10;
+      scatterPlot.add(titleX);
+
+      var titleX = createText2D('-Y');
+      titleX.position.y = -SPsize-10;
+      scatterPlot.add(titleX);
+
+      var titleX = createText2D('Y');
+      titleX.position.y = SPsize+10;
+      scatterPlot.add(titleX);
+
+      var titleX = createText2D('-Z');
+      titleX.position.z = -SPsize-10;
+      scatterPlot.add(titleX);
+
+      var titleX = createText2D('Z');
+      titleX.position.z = SPsize+10;
+      scatterPlot.add(titleX);
+      
+/////////////////////////////////////////////////
+/////////////////////////////////////////RENDERER
+/////////////////////////////////////////////////
+
+      renderer.render(scene, camera);
+      var paused = false;
+      var last = new Date().getTime();
+      var down = false;
+      var sx = 0, sy = 0;
+      window.onmousedown = function (ev){
+        down = true; sx = ev.clientX; sy = ev.clientY;
+      };
+      window.onmouseup = function(){ down = false; };
+      window.onmousemove = function(ev) {
+        if (down) {
+          var dx = ev.clientX - sx;
+          var dy = ev.clientY - sy;
+          scatterPlot.rotation.y += dx*0.01;
+          camera.position.y += dy;
+          sx += dx;
+          sy += dy;
+        }
+      }
+      var animating = false;
+      window.ondblclick = function() { animating = !animating; };
+      function animate(t) {
+        if (!paused) {
+          last = t;
+          if (animating) {
+            var v = pointGeo.vertices;
+            for (var i=0; i<v.length; i++) {
+              var u = v[i];
+              u.angle += u.speed * 0.01;
+              u.position.x = Math.cos(u.angle)*u.radius;
+              u.position.z = Math.sin(u.angle)*u.radius;
+            }
+            pointGeo.__dirtyVertices = true;
+          }
+          renderer.clear();
+          camera.lookAt(scene.position);
+          renderer.render(scene, camera);
+        }
+        window.requestAnimationFrame(animate, renderer.domElement);
+      };
+      animate(new Date().getTime());
+      onmessage = function(ev) {
+        paused = (ev.data == 'pause');
+      };
+      
+    </script>
+
+  </body>
+
+</html>
